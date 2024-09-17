@@ -1,0 +1,1 @@
+# "from transformers import AutoModel, AutoTokenizer; AutoModel.from_pretrained('impira/layoutlm-document-qa'); AutoTokenizer.from_pretrained('impira/layoutlm-document-qa', clean_up_tokenization_spaces=True)"

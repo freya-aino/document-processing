@@ -26,7 +26,7 @@ def preprocess_image(image: Image.Image) -> Image.Image:
     
     return Image.fromarray(denoised)
 
-@app.get("/agailable-languages")
+@app.get("/list-all-languages")
 async def get_available_languages() -> JSONResponse:
     try:
         languages = pytesseract.get_languages(config="")
@@ -35,16 +35,44 @@ async def get_available_languages() -> JSONResponse:
         return JSONResponse(content={"error": str(e)}, status_code=500)
 
 @app.post("/extract-text")
-async def extract_text(image: UploadFile = File(...), language: str = "deu") -> JSONResponse:
+async def extract_text(image: UploadFile = File(...), language: str = "deu", psm: int = 12) -> JSONResponse:
     try:
         raw_file = await image.read()
         image = Image.open(io.BytesIO(raw_file))
         
         image = preprocess_image(image)
         
-        text = pytesseract.image_to_string(image, lang="deu", config="--psm 6")
+        ret = pytesseract.image_to_string(image, lang="deu", config=f"--psm {psm}",  output_type=pytesseract.Output.DICT)
         
-        return JSONResponse(content={"text": text}, status_code=200)
+        return JSONResponse(ret, status_code=200)
+    
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
+@app.post("/extract-data")
+async def extract_data(image: UploadFile = File(...), language: str = "deu", psm: int = 12) -> JSONResponse:
+    try:
+        raw_file = await image.read()
+        image = Image.open(io.BytesIO(raw_file))
+        
+        image = preprocess_image(image)
+        
+        data = pytesseract.image_to_data(image, lang="deu", config=f"--psm {psm}",  output_type=pytesseract.Output.DICT)
+        
+        words = []
+        for i in range(len(data['text'])):
+            if int(data['conf'][i]) > 0:  # Filter out weak confidence results
+                word_info = {
+                    'text': data['text'][i],
+                    'left': data['left'][i],
+                    'top': data['top'][i],
+                    'width': data['width'][i],
+                    'height': data['height'][i],
+                    'confidence': data['conf'][i]
+                }
+                words.append(word_info)
+        
+        return JSONResponse(content={"words": words, "data": data}, status_code=200)
     
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)
