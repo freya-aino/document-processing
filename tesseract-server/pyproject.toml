@@ -3,7 +3,6 @@ name = "tesseract-server"
 version = "0.1.0"
 description = ""
 authors = ["freya-aino <freya.aino@pm.me>"]
-readme = "README.md"
 packages = [{include = "tesseract_server", from = "."}]
 
 [tool.poetry.dependencies]

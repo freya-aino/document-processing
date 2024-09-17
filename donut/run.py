@@ -33,7 +33,7 @@ async def parse_document(file: UploadFile = File(...)):
         image = Image.open(io.BytesIO(image))
         
         pixel_values = processor_parse(image, return_tensors="pt").pixel_values
-                
+        
         # prepare decoder inputs
         task_prompt = "<s_cord-v2>"
         decoder_input_ids = processor_parse.tokenizer(task_prompt, add_special_tokens=False, return_tensors="pt").input_ids
