@@ -5,8 +5,7 @@ import streamlit as st
 from PIL import Image
 from PIL import Image, ImageDraw, ImageFont
 
-from utils.url_caller import call_url
-from utils.API import IMAGE_CLASSIFICATION, OBJECT_DETECTION, POSE_ESTIMATION, OCR_DATA_EXTRACTION
+from utils.url_caller import call_url, process_image_with_all
 
 # Streamlit app
 st.set_page_config(layout="wide")
@@ -37,68 +36,70 @@ with input_column:
                     image = Image.open(file)
                     image.thumbnail((640, 640))
                     
-                    # classification
-                    classification_response = None
-                    try:
-                        response = call_url(IMAGE_CLASSIFICATION, image)
-                        message_column.success(f"{response.status_code}: classification: {file.name}")
-                        
-                        classification_response = json.loads(response.text)
-                        
-                    except requests.exceptions.RequestException as e:
-                        message_placeholder.warning(f"Error: {e}")
+                    results = process_image_with_all(image, message_column)
                     
-                    # object detection
-                    object_detection_response = None
-                    try:
-                        response = call_url(OBJECT_DETECTION, image)
-                        message_column.success(f"{response.status_code}: object detection: {file.name}")
+                    # # classification
+                    # classification_response = None
+                    # try:
+                    #     response = call_url(IMAGE_CLASSIFICATION, image)
+                    #     message_column.success(f"{response.status_code}: classification: {file.name}")
                         
-                        object_detection_response = json.loads(response.text)
+                    #     classification_response = json.loads(response.text)
                         
-                        if len(object_detection_response["result"]) == 0:
-                            object_detection_response = None
-                        
-                    except requests.exceptions.RequestException as e:
-                        message_placeholder.warning(f"Error: {e}")
+                    # except requests.exceptions.RequestException as e:
+                    #     message_placeholder.warning(f"Error: {e}")
                     
-                    # pose estimation
-                    pose_estimation_response = None
-                    try:
-                        response = call_url(POSE_ESTIMATION, image)
-                        message_column.success(f"{response.status_code}: pose estimation: {file.name}")
+                    # # object detection
+                    # object_detection_response = None
+                    # try:
+                    #     response = call_url(OBJECT_DETECTION, image)
+                    #     message_column.success(f"{response.status_code}: object detection: {file.name}")
                         
-                        pose_estimation_response = json.loads(response.text)
+                    #     object_detection_response = json.loads(response.text)
                         
-                        if len(pose_estimation_response["result"]) == 0:
-                            pose_estimation_response = None
+                    #     if len(object_detection_response["result"]) == 0:
+                    #         object_detection_response = None
                         
-                    except requests.exceptions.RequestException as e:
-                        message_placeholder.warning(f"Error: {e}")
+                    # except requests.exceptions.RequestException as e:
+                    #     message_placeholder.warning(f"Error: {e}")
                     
-                    # text extraction
-                    text_extraction_response = None
-                    try:
-                        response = call_url(OCR_DATA_EXTRACTION, image)
+                    # # pose estimation
+                    # pose_estimation_response = None
+                    # try:
+                    #     response = call_url(POSE_ESTIMATION, image)
+                    #     message_column.success(f"{response.status_code}: pose estimation: {file.name}")
                         
-                        message_column.success(f"{response.status_code}: text extraction: {file.name}")
+                    #     pose_estimation_response = json.loads(response.text)
                         
-                        text_extraction_response = json.loads(response.text)
+                    #     if len(pose_estimation_response["result"]) == 0:
+                    #         pose_estimation_response = None
                         
-                        if len(text_extraction_response["words"]) == 0:
-                            text_extraction_response = None
+                    # except requests.exceptions.RequestException as e:
+                    #     message_placeholder.warning(f"Error: {e}")
                     
-                    except requests.exceptions.RequestException as e:
-                        message_placeholder.warning(f"Error: {e}")
+                    # # text extraction
+                    # text_extraction_response = None
+                    # try:
+                    #     response = call_url(OCR_DATA_EXTRACTION, image)
+                        
+                    #     message_column.success(f"{response.status_code}: text extraction: {file.name}")
+                        
+                    #     text_extraction_response = json.loads(response.text)
+                        
+                    #     if len(text_extraction_response["words"]) == 0:
+                    #         text_extraction_response = None
+                    
+                    # except requests.exceptions.RequestException as e:
+                    #     message_placeholder.warning(f"Error: {e}")
                     
                     
                     # ----------------------------------------
                     
-                    if classification_response:
+                    if results["classification"]:
                         classification_outputs.append(
                             [
                                 f"lemmas: {', '.join(l['lemmas'])} - probability: {p:.2f}"
-                                for p, l in zip(classification_response["probabilities"], classification_response["labels"])
+                                for p, l in zip(results["classification"]["probabilities"], results["classification"]["labels"])
                             ]
                         )
                     else:
@@ -110,34 +111,34 @@ with input_column:
                     draw = ImageDraw.Draw(ann_image)
                     
                     # draw text extraction
-                    if text_extraction_response:
-                        for word in text_extraction_response["words"]:
+                    if results["text_data_extraction"]:
+                        for word in results["text_data_extraction"]["words"]:
                             x, y, w, h = word["bbox"]
                             x *= ann_image.size[0]
                             y *= ann_image.size[1]
                             w *= ann_image.size[0]
                             h *= ann_image.size[1]
                             
-                            x1 = x - w / 2
-                            y1 = y - h / 2
-                            x2 = x + w / 2
-                            y2 = y + h / 2
+                            x1 = x
+                            y1 = y
+                            x2 = x + w
+                            y2 = y + h
                             
                             draw.rectangle([x1, y1, x2, y2], outline="blue", width=2)
-                            draw.text((x1 - 5, y1 - 15), word["text"], fill="blue")
-                            draw.text((x1 - 5, y1 - 30), f"{word['confidence']:.2f}", fill="blue")
+                            draw.text((x1 - 5, y1 - 15), word["text"], fill="red")
+                            draw.text((x1 - 5, y1 - 30), f"{word['confidence']:.2f}", fill="red")
                     
                     # draw pose estimation
-                    if pose_estimation_response:
-                        for person_landmarks in pose_estimation_response["result"][0]["landmarks"]:
+                    if results["pose_estimation"]:
+                        for person_landmarks in results["pose_estimation"]["result"][0]["landmarks"]:
                             for kpt in person_landmarks["keypoints"][0]:
                                 if sum(kpt) == 0:
                                     continue
                                 draw.circle((kpt[0] * ann_image.size[0], kpt[1] * ann_image.size[1]), 5, fill="red")
                     
                     # draw object detection
-                    if object_detection_response:
-                        for bbox in object_detection_response["result"][0]["bboxes"]:
+                    if results["object_detection"]:
+                        for bbox in results["object_detection"]["result"][0]["bboxes"]:
                             x, y, w, h = bbox["bbox"]
                             x *= ann_image.size[0]
                             y *= ann_image.size[1]

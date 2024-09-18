@@ -1,0 +1,47 @@
+import requests
+
+from utils import API
+
+urls = [
+    API.IMAGE_CLASSIFICATION,
+    API.OBJECT_DETECTION,
+    API.POSE_ESTIMATION,
+    API.OCR_DATA_EXTRACTION,
+    API.OCR_TEXT_EXTRACTION
+]
+
+
+with open("huggingface-api-key.txt", "r") as f:
+    api_key = f.read().strip()
+headers = {
+    "Authorization": f"Bearer {api_key}"
+}
+
+test_image = "./test_image.PNG"
+
+for url in urls:
+    with open(test_image, "rb") as f:
+        files = {"file": f}
+        response = requests.post(url, headers=headers, files=files)
+        if response.status_code == 200:
+            print("success: ", url, "-", response.status_code)
+        else:
+            print("failed:  ", url, "\n", response.text)
+    print("----------------------------------------------------------")
+
+# # check gradio model
+
+# from gradio_client import Client, handle_file
+
+# with open("./huggingface-api-key.txt", "r") as f:
+#     api_token = f.read().strip()
+# client = Client("fey-aino/GOT_official_online_demo", hf_token = api_token)
+# result = client.predict(
+# 		image=handle_file(test_image),
+# 		got_mode="plain texts OCR",
+# 		fine_grained_mode="box",
+# 		ocr_color="red",
+# 		ocr_box="Hello!!",
+# 		api_name="/run_GOT"
+# )
+# print(result)

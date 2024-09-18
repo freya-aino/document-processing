@@ -22,7 +22,6 @@ fastapi \
 
 # pre load models
 RUN python -c "from transformers import DonutProcessor, VisionEncoderDecoderModel; DonutProcessor.from_pretrained('naver-clova-ix/donut-base-finetuned-cord-v2'); VisionEncoderDecoderModel.from_pretrained('naver-clova-ix/donut-base-finetuned-cord-v2')"
-RUN python -c "from transformers import DonutProcessor, VisionEncoderDecoderModel; DonutProcessor.from_pretrained('naver-clova-ix/donut-base-finetuned-docvqa'); VisionEncoderDecoderModel.from_pretrained('naver-clova-ix/donut-base-finetuned-docvqa')"
 
 WORKDIR /app
 COPY . .
