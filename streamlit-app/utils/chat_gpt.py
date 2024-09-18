@@ -56,9 +56,9 @@ def objects_to_prompt(objects_response):
     
     out = ""
     for object_ in objects_response["result"][0]["bboxes"]:
-        out += f"class={object_["class"]}" + "\n"
-        out += f"bbox={object_["bbox"]}" + "\n"
-        out += f"confidence={object_["confidence"]}" + "\n"
+        out += f"class={object_['class']}" + "\n"
+        out += f"bbox={object_['bbox']}" + "\n"
+        out += f"confidence={object_['confidence']}" + "\n"
     
     return (
         """
@@ -129,8 +129,8 @@ def generate_prompt(image_description):
     return prompt
 
 
-if __name__ == "__main__":
-    
+
+
     llm = ChatOpenAI(
         model="gpt-4o-mini",
         temperature=0,

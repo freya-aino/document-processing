@@ -6,14 +6,11 @@ from PIL import Image
 from PIL import Image, ImageDraw, ImageFont
 
 from utils.url_caller import call_url
-from utils.API import IMAGE_CLASSIFICATION, OBJECT_DETECTION, POSE_ESTIMATION
+from utils.API import IMAGE_CLASSIFICATION, OBJECT_DETECTION, POSE_ESTIMATION, OCR_DATA_EXTRACTION
 
 # Streamlit app
 st.set_page_config(layout="wide")
 st.title("Image Extractor")
-
-def show():
-    st.title("Image Extraction")
 
 # Initialize session state for uploaded files
 if 'uploaded_files' not in st.session_state:
@@ -79,6 +76,21 @@ with input_column:
                     except requests.exceptions.RequestException as e:
                         message_placeholder.warning(f"Error: {e}")
                     
+                    # text extraction
+                    text_extraction_response = None
+                    try:
+                        response = call_url(OCR_DATA_EXTRACTION, image)
+                        
+                        message_column.success(f"{response.status_code}: text extraction: {file.name}")
+                        
+                        text_extraction_response = json.loads(response.text)
+                        
+                        if len(text_extraction_response["words"]) == 0:
+                            text_extraction_response = None
+                    
+                    except requests.exceptions.RequestException as e:
+                        message_placeholder.warning(f"Error: {e}")
+                    
                     
                     # ----------------------------------------
                     
@@ -96,6 +108,24 @@ with input_column:
                     
                     ann_image = image.copy()
                     draw = ImageDraw.Draw(ann_image)
+                    
+                    # draw text extraction
+                    if text_extraction_response:
+                        for word in text_extraction_response["words"]:
+                            x, y, w, h = word["bbox"]
+                            x *= ann_image.size[0]
+                            y *= ann_image.size[1]
+                            w *= ann_image.size[0]
+                            h *= ann_image.size[1]
+                            
+                            x1 = x - w / 2
+                            y1 = y - h / 2
+                            x2 = x + w / 2
+                            y2 = y + h / 2
+                            
+                            draw.rectangle([x1, y1, x2, y2], outline="blue", width=2)
+                            draw.text((x1 - 5, y1 - 15), word["text"], fill="blue")
+                            draw.text((x1 - 5, y1 - 30), f"{word['confidence']:.2f}", fill="blue")
                     
                     # draw pose estimation
                     if pose_estimation_response:

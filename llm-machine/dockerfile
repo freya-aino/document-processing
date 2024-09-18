@@ -10,8 +10,7 @@ RUN pip install \
     langchain \
     langchain-community \
     langchain-openai \
-    openai \
-    anthropic
+    openai
 
 WORKDIR /app
 COPY . . 

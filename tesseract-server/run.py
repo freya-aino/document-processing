@@ -64,11 +64,13 @@ async def extract_data(image: UploadFile = File(...), language: str = "deu", psm
             if int(data['conf'][i]) > 0:  # Filter out weak confidence results
                 word_info = {
                     'text': data['text'][i],
-                    'left': data['left'][i],
-                    'top': data['top'][i],
-                    'width': data['width'][i],
-                    'height': data['height'][i],
-                    'confidence': data['conf'][i]
+                    'bbox': [
+                        data['left'][i] / image.width,
+                        data['top'][i] / image.height,
+                        data['width'][i] / image.width,
+                        data['height'][i] / image.height
+                    ],
+                    'confidence': data['conf'][i] / 100
                 }
                 words.append(word_info)
         

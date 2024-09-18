@@ -1,6 +1,8 @@
 import io
 import requests
 
+from .chat_gpt import *
+
 # Function to call URLs in the background
 def call_url(url, image):
     # Convert image to bytes
@@ -14,3 +16,9 @@ def call_url(url, image):
     
     # Send POST request with image
     return requests.post(url, files={'file': img_byte_arr})
+
+
+def assistant_chat_api(user_input, images):
+    
+    
+    classification_to_prompt()
