@@ -1,0 +1,4 @@
+
+IMAGE_CLASSIFICATION = "http://127.0.0.1:10001/predict"
+OBJECT_DETECTION = "http://127.0.0.1:10000/detection"
+POSE_ESTIMATION = "http://127.0.0.1:10000/pose"

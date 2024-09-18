@@ -17,8 +17,10 @@ with open("./imagenet21k_wordnet_ids.txt") as f:
     wordnet_ids = [int(line.strip()[1:]) for line in f.readlines()] 
 
 # ------------------- setup ------------------- #
+weights_path = "./tf_efficientnetv2_m_in21k.pth"
 
-model = timm.create_model('tf_efficientnetv2_m.in21k', pretrained=True)
+model = timm.create_model('tf_efficientnetv2_m.in21k', pretrained=False)
+model.load_state_dict(T.load(weights_path, weights_only=True))
 model = model.eval()
 model = model.to(device)
 
@@ -48,7 +50,7 @@ async def predict(file: UploadFile = File(...)):
         raw = await file.read()
         img = Image.open(io.BytesIO(raw)).convert('RGB')
         
-        output = model(transforms(img).unsqueeze(0))  # unsqueeze single image into batch of 1
+        output = model(transforms(img).unsqueeze(0).to(device))
         top5_probabilities, top5_class_indices = T.topk(output.softmax(dim=1) * 100, k=5)
         
         labels = []

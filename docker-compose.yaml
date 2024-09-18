@@ -1,0 +1,51 @@
+version: "3.8"
+
+services:
+  yolov8:
+    build:
+      context: ./yolov8
+    container_name: yolov8-container
+    ports:
+      - "10000:8080"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
+              device_ids: ["0"]
+  
+  in21k-classifier:
+    build:
+      context: ./image-classifier
+    container_name: image-classifier-container
+    ports:
+      - "10001:8080"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
+              device_ids: ["0"]
+  
+  llm-machine:
+    build:
+      context: ./llm-machine
+    container_name: llm-machine-container
+    ports:
+      - "10002:8080"
+  
+  tesseract-server:
+    build:
+      context: ./tesseract-server
+    container_name: tesseract-server-container
+    ports:
+      - "10003:8080"
+  
+  got-ocr2:
+    build:
+      context: ./got-ocr2
+    container_name: got-ocr2-container
+    ports:
+      - "10004:8080"

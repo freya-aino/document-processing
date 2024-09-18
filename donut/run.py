@@ -48,7 +48,7 @@ async def parse_document(file: UploadFile = File(...)):
             bad_words_ids=[[processor_parse.tokenizer.unk_token_id]],
             return_dict_in_generate=True,
         )
-
+        
         sequence = processor_parse.batch_decode(outputs.sequences)[0]
         sequence = sequence.replace(processor_parse.tokenizer.eos_token, "").replace(processor_parse.tokenizer.pad_token, "")
         sequence = re.sub(r"<.*?>", "", sequence, count=1).strip()  # remove first task start token

@@ -38,5 +38,5 @@ RUN poetry install --no-root
 ENV TESSDATA_PREFIX=/usr/share/tesseract-ocr/4.00/tessdata/
 
 
-ENTRYPOINT [ "poetry", "run", "uvicorn", "run:app", "--host", "0.0.0.0", "--port", "10000" ]
+ENTRYPOINT [ "poetry", "run", "uvicorn", "run:app", "--host", "0.0.0.0", "--port", "8080" ]
 # ENTRYPOINT [ "/bin/bash" ]

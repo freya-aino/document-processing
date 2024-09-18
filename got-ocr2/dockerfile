@@ -13,4 +13,4 @@ RUN pip install \
 WORKDIR /app
 COPY . .
 
-ENTRYPOINT [ "/bin/bash" ]
+ENTRYPOINT [ "uvicorn", "run:app", "--host", "0.0.0.0", "--port", "8080" ]

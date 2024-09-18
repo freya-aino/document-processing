@@ -1,3 +1,4 @@
+import logging
 import cv2
 import numpy as np
 import torch as T
@@ -10,6 +11,8 @@ from typing import Union
 from ultralytics import YOLO
 
 # ----------------------------------------------------------------
+
+logging.getLogger("ultralytics").setLevel(logging.ERROR)
 
 device = "cuda" if T.cuda.is_available() else "cpu"
 

@@ -18,11 +18,11 @@ app = FastAPI()
 # --------------------------------------------------------------
 
 @app.post("/ocr")
-async def ocr(file: UploadFile = File(...), image_size: tuple[int, int] = (750, 750)):
+async def ocr(file: UploadFile = File(...), image_size: int = 750):
     try:
         raw = await file.read()
         img = Image.open(io.BytesIO(raw))
-        img = img.resize(image_size, resample=Image.BICUBIC)
+        img = img.resize((image_size, image_size), resample=Image.BICUBIC)
         
         with tempfile.NamedTemporaryFile(suffix=".jpeg", delete=False) as temp_file:
             
@@ -37,7 +37,8 @@ async def ocr(file: UploadFile = File(...), image_size: tuple[int, int] = (750, 
                 ocr_color="red",
                 api_name="/ocr_demo"
             )
-            print(result)
+            
+            return JSONResponse(content=result, status_code=200)
             
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        return JSONResponse(content={"error": str(e)}, status_code=500)
