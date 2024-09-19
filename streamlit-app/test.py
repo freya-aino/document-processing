@@ -45,9 +45,19 @@ LLM = ChatOpenAI(
     max_tokens=None,
     timeout=None,
     max_retries=2
-)
+) 
 
-print("chatgpt:", LLM.invoke(ChatPromptTemplate("ping")))
+# Create a prompt template
+prompt_template = ChatPromptTemplate("ping")
+
+# Create a chain with the prompt template and the LLM
+chain = prompt_template | LLM
+
+# Invoke the model with the prompt
+response = chain.invoke({"prompt": "test connection: ping"})
+
+# Print the response
+print("chatgpt:", response.content)
 print("----------------------------------------------------------")
 
 

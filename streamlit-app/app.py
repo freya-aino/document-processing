@@ -23,6 +23,9 @@ if "extracted_information" not in st.session_state:
 if "gpt_extracted_information" not in st.session_state:
     st.session_state.gpt_extracted_information = {}
 
+if "first_message" not in st.session_state:
+    st.session_state.first_message = True
+
 # Create a layout with three columns
 input_column, chat_column, output_column, message_column = st.columns([2, 2, 2, 1])
 
@@ -31,7 +34,6 @@ with output_column:
     result_placeholder = st.empty()
 with message_column:
     st.header("Messages")
-    message_placeholder = st.empty()
 
 # image uplad column
 with input_column:
@@ -44,8 +46,9 @@ with input_column:
             image = Image.open(file)
             image.thumbnail((640, 640))
             
-            result = process_image_with_all(image, message_column)
-            st.session_state.extracted_information[file.name] = result
+            with message_column.container():
+                result = process_image_with_all(image, message_column)
+                st.session_state.extracted_information[file.name] = result
         
         with result_placeholder.container():
             for result in st.session_state.extracted_information.values():
@@ -61,7 +64,7 @@ with input_column:
         st.session_state.uploaded_files = persisted_old_files + new_files
         
     
-    st.button("Clear Extracted Information", on_click=lambda: st.session_state.extracted_information.clear())
+    st.button("Clear Extracted Information", type="secondary", on_click=lambda: st.session_state.extracted_information.clear())
     
     # display images
     if st.session_state.uploaded_files:
@@ -81,8 +84,9 @@ with chat_column:
                 if file_name in st.session_state.gpt_extracted_information:
                     continue
                 
-                gpt_extracted_information = gpt_extract_information(result, message_column)
-                st.session_state.gpt_extracted_information[file_name] = gpt_extracted_information
+                with message_column.container():
+                    gpt_extracted_information = gpt_extract_information(result, message_column)
+                    st.session_state.gpt_extracted_information[file_name] = gpt_extracted_information
             
             with result_placeholder.container():
                 for result in st.session_state.gpt_extracted_information.values():
@@ -93,9 +97,11 @@ with chat_column:
             
             user_input = st.chat_input("Start chatting about your images here...")
             
-            with st.spinner("Assistant is processing..."):
-                initial_introduction = assistant_chat_api("Hi, please introduce yourselfe, state your purpose and mention a quick one sentence reference to the images the data provided describe.", st.session_state.extracted_information, st.session_state.gpt_extracted_information)
-                st.session_state.chat_history.append({"role": "assistant", "content": initial_introduction})
+            if st.session_state.first_message:
+                with st.spinner("Assistant is processing..."):
+                    initial_introduction = assistant_chat_api("Hi, please introduce yourselfe, state your purpose and mention a quick one sentence reference to the images the data provided describe.", st.session_state.extracted_information, st.session_state.gpt_extracted_information)
+                    st.session_state.chat_history.append({"role": "assistant", "content": initial_introduction})
+                st.session_state.first_message = False
             
             if user_input:
                 
@@ -108,6 +114,11 @@ with chat_column:
             for message in reversed(st.session_state.chat_history):
                 with st.chat_message(message["role"]):
                     st.markdown(message["content"])
+        else:
+            st.session_state.first_message = True
         
-        st.button("Clear GPT Extracted Information", on_click=lambda: st.session_state.gpt_extracted_information.clear())
+        if st.button("Clear Chat", type="secondary"):
+            st.session_state.chat_history.clear()
+        
+        st.button("Clear GPT Extracted Information", type="secondary", on_click=lambda: st.session_state.gpt_extracted_information.clear())
         

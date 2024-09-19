@@ -31,6 +31,7 @@ def process_image_with_all(image, message_column):
     object_detection_response = None
     pose_estimation_response = None
     text_extraction_response = None
+    
     try:
         # image classificatoin
         response = call_url(IMAGE_CLASSIFICATION, image)
@@ -176,3 +177,45 @@ def assistant_chat_api(user_input, extracted_information, gpt_extracted_informat
     }).content
     
     return answer
+
+def image_generator_api(user_input, extracted_information, gpt_extracted_information, chat_history):
+    
+    information = ""
+    for file_name in gpt_extracted_information:
+        gpt_information = gpt_extracted_information[file_name]
+        ext_information = extracted_information[file_name]
+        
+        for k in gpt_information:
+            gpt_information[k] = gpt_information[k].replace("\"", "'") if gpt_information[k] else ""
+        
+        ext_information_prompts = get_prompt_formatting(ext_information)
+        
+        information += f"""
+            <image={file_name}>
+                <assistant_information>
+                    <classification>{gpt_information.get('classification', '')}</classification>
+                    <object_detection>{gpt_information.get('object_detection', '')}</object_detection>
+                    <pose_estimation>{gpt_information.get('pose_estimation', '')}</pose_estimation>
+                    <text_extraction>{gpt_information.get('text_extraction', '')}</text_extraction>
+                </assistant_information>
+                <raw_assistant_information>
+                    <classification>{ext_information_prompts.get('classification', '')}</classification>
+                    <object_detection>{ext_information_prompts.get('object_detection', '')}</object_detection>
+                    <pose_estimation>{ext_information_prompts.get('pose_estimation', '')}</pose_estimation>
+                    <text_extraction>{ext_information_prompts.get('text_extraction', '')}</text_extraction>
+                </raw_assistant_information>
+            </image>
+            """
+    
+    chat_history = "".join([f"<chat><role>{message['role']}</role><content>{message['content']}</content></chat>" for message in chat_history])
+    
+    chain = GENERATION_PROMPT | LLM_CHAT
+    
+    image_prompt = chain.invoke({
+        "instructions": IMAGE_GENERATION_INSTRUCTIONS,
+        "information": information,
+        "chat_history": chat_history,
+        "prompt": user_input
+    }).content
+    
+    return image_prompt

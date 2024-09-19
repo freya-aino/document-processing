@@ -12,6 +12,26 @@ os.environ["OPENAI_API_KEY"] = openai_api_key
 
 # ------------------------------------------------------------------------------
 
+from openai import OpenAI
+
+def generate_image(prompt, size=(1024, 1024), quality="standard", n=1):
+    
+    client = OpenAI()
+    
+    response = client.images.generate(
+        model="dall-e-3",
+        prompt=prompt,
+        size=f"{size[0]}x{size[1]}",
+        quality=quality,
+        n=n,
+    )
+    
+    image_urls = [d.url for d in response.data]
+    
+    print(image_urls)
+
+# ------------------------------------------------------------------------------
+
 LLM = ChatOpenAI(
     model="gpt-4o-mini",
     temperature=0.1,
@@ -28,6 +48,8 @@ LLM_CHAT = ChatOpenAI(
     max_retries=2
 )
 
+
+# ------------------------------------------------------------------------------
 
 EXTRACTION_PROMPT = ChatPromptTemplate.from_messages(
     [
@@ -46,7 +68,32 @@ CHAT_PROMPT = ChatPromptTemplate.from_messages(
     [
         (
             "system",
-            "<instructions>{instructions}</instructions>\n<information>{information}</information>"
+            "<instructions>{instructions}</instructions>"
+        ),
+        (
+            "assistant",
+            "<information>{information}</information>"
+        ),
+        (
+            "user",
+            "<prompt>{prompt}</prompt>"
+        )
+    ]
+)
+
+GENERATION_PROMPT = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            "<instructions>{instructions}</instructions>"
+        ),
+        (
+            "assistant",
+            "<information>{information}</information>"
+        ),
+        (
+            "system",
+            "<chat_history>{chat_history}</chat_history>"
         ),
         (
             "user",
@@ -56,6 +103,50 @@ CHAT_PROMPT = ChatPromptTemplate.from_messages(
 )
 
 # ------------------------------------------------------------------------------
+
+IMAGE_GENERATION_INSTRUCTIONS = """
+you are an AI image prompt engineering expert.
+you only generate AI Image generation prompts, you do not answer questions or engage in chat!
+
+you will recieve a prompt request from the user to generate an image generation prompt.
+The promp you generate needs to be in the format of modern SOTA image generation prompt standards.
+
+The user uploads a set of images, and you will be given:
+1) a set of information extracted from deep learning models about the images.
+2) an expert assistants description and reasoning over each of the images information.
+3) all prior chat messages between the user and the assistant.
+You MUST include the assistants information and/or any raw information from the image set in the image prompt you generate.
+This information includes but is not limited to: classifications, locations, poses, texts, effects, objects, etc.
+
+
+you need to use the following specifications about the image generation to generate the prompt:
+- your assistants have a good understanding of each piece of information, their assesstment should be considered accurate and reliable.
+- only in edge cases, where information between assistants is conflicting, you should re-evaluate using the raw_assistant_information to provide answers.
+- chat_history information contains additional context what is in the images and what should be generated.
+- <information> provides two sets of information for each image in the collection:
+    1) <assistant_information> - a set of proffessional assistants extracted usefull descriptions and information.
+    2) <raw_assistant_information> - the raw information extracted directly from the images.
+- the information provided is in the format:
+    [<image=file_name>
+        <assistant_information>
+            <classification>...</classification>
+            <object_detection>...</object_detection>
+            <pose_estimation>...</pose_estimation>
+            <text_extraction>...</text_extraction>
+        </assistant_information>
+        <raw_assistant_information>
+            <classification>...</classification>
+            <object_detection>...</object_detection>
+            <pose_estimation>...</pose_estimation>
+            <text_extraction>...</text_extraction>
+        </raw_assistant_information>
+    </image>, <image=file_name>...</image>, ...]
+- the designated information is in the format:
+    <classification>...</classification> - classification information extracted from the image
+    <object_detection>...</object_detection> - object detection information extracted from the image
+    <pose_estimation>...</pose_estimation> - pose estimation information extracted from the image
+    <text_extraction>...</text_extraction> - text extraction information extracted from the image
+"""
 
 CHAT_INSTRUCTIONS = """
 you are charlie, a personal, ready to help, sevice chatbot to help the user with their prompts.
