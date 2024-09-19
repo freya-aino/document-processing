@@ -5,7 +5,7 @@ import io
 
 import streamlit as st
 
-from utils.url_caller import gpt_extract_information, process_image_with_all
+from utils.url_caller import gpt_extract_information, process_image_with_all, assistant_chat_api
 
 # Streamlit app
 st.set_page_config(layout="wide")
@@ -27,8 +27,10 @@ if "gpt_extracted_information" not in st.session_state:
 input_column, chat_column, output_column, message_column = st.columns([2, 2, 2, 1])
 
 with output_column:
+    st.header("Output")
     result_placeholder = st.empty()
 with message_column:
+    st.header("Messages")
     message_placeholder = st.empty()
 
 # image uplad column
@@ -63,16 +65,14 @@ with input_column:
     
     # display images
     if st.session_state.uploaded_files:
-        columns = st.columns(3)
+        columns = st.columns(2)
         for i, file in enumerate(st.session_state.uploaded_files):
             image = Image.open(file)
             columns[i % 2].image(image, caption=f'{file.name}', width=150)
-    
+
 
 # chat functionality
-
 with chat_column:
-    st.header("Assistant")
     
     if st.session_state.extracted_information:
         
@@ -93,33 +93,21 @@ with chat_column:
             
             user_input = st.chat_input("Start chatting about your images here...")
             
+            with st.spinner("Assistant is processing..."):
+                initial_introduction = assistant_chat_api("Hi, please introduce yourselfe, state your purpose and mention a quick one sentence reference to the images the data provided describe.", st.session_state.extracted_information, st.session_state.gpt_extracted_information)
+                st.session_state.chat_history.append({"role": "assistant", "content": initial_introduction})
+            
             if user_input:
                 
-                st.session_state.chat_history.append({
-                    "role": "user",
-                    "content": user_input
-                })
+                st.session_state.chat_history.append({"role": "user", "content": user_input})
                 
                 with st.spinner("Assistant is processing..."):
-                    response = assistant_chat_api(user_input, st.session_state.uploaded_files)
-                    st.session_state.chat_history.append({
-                        "role": "api",
-                        "content": response
-                    })
-                
+                    response = assistant_chat_api(user_input, st.session_state.extracted_information, st.session_state.gpt_extracted_information)
+                st.session_state.chat_history.append({"role": "assistant", "content": response})
+            
             for message in reversed(st.session_state.chat_history):
-                if message["role"] == "user":
-                    st.markdown(f"""
-                        <div style="text-align: right; background-color: rgba(0, 127, 255, 0.1); padding: 10px; border-radius: 10px; margin: 5px;">
-                            {message["content"]}
-                        </div>
-                    """, unsafe_allow_html=True)
-                else:
-                    st.markdown(f"""
-                        <div style="text-align: left; background-color: rgba(255, 0, 127, 0.1); padding: 10px; border-radius: 10px; margin: 5px;">
-                            {message["content"]}
-                        </div>
-                    """, unsafe_allow_html=True)
+                with st.chat_message(message["role"]):
+                    st.markdown(message["content"])
         
         st.button("Clear GPT Extracted Information", on_click=lambda: st.session_state.gpt_extracted_information.clear())
         

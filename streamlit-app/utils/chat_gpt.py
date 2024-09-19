@@ -20,6 +20,15 @@ LLM = ChatOpenAI(
     max_retries=2
 )
 
+LLM_CHAT = ChatOpenAI(
+    model="gpt-4o",
+    temperature=0.05,
+    max_tokens=None,
+    timeout=None,
+    max_retries=2
+)
+
+
 EXTRACTION_PROMPT = ChatPromptTemplate.from_messages(
     [
         (
@@ -33,8 +42,59 @@ EXTRACTION_PROMPT = ChatPromptTemplate.from_messages(
     ]
 )
 
+CHAT_PROMPT = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            "<instructions>{instructions}</instructions>\n<information>{information}</information>"
+        ),
+        (
+            "user",
+            "<prompt>{prompt}</prompt>"
+        )
+    ]
+)
 
 # ------------------------------------------------------------------------------
+
+CHAT_INSTRUCTIONS = """
+you are charlie, a personal, ready to help, sevice chatbot to help the user with their prompts.
+The user uploads a set of images that they wish to talk and inqurry information about.
+
+Reason over each of the images information and provide the user with a personal answer to their questions.
+Answer in a polite, professional but kind manner, and explain why you are providing the information you are providing.
+Keep the answers short and differentiate between the user asking:
+- a techical (extraction) question, for example "how many people are there accross all the images?" or "how many document images are there ?"
+- or a general (explanation) question, for example "what motives do we have in the images?" or "what are the images about?"
+
+you need to use the following specifications about the chat to answer the questions and describe the information:
+- your assistants have a good understanding of each piece of information, their assesstment should be considered accurate and reliable.
+- only in edge cases, where information between assistants is conflicting, you should re-evaluate using the raw_assistant_information to provide answers.
+- <information> provides two sets of information for each image in the collection:
+    1) <assistant_information> - a set of proffessional assistants extracted usefull descriptions and information.
+    2) <raw_assistant_information> - the raw information extracted directly from the images.
+- the information provided is in the format:
+    [<image=file_name>
+        <assistant_information>
+            <classification>...</classification>
+            <object_detection>...</object_detection>
+            <pose_estimation>...</pose_estimation>
+            <text_extraction>...</text_extraction>
+        </assistant_information>
+        <raw_assistant_information>
+            <classification>...</classification>
+            <object_detection>...</object_detection>
+            <pose_estimation>...</pose_estimation>
+            <text_extraction>...</text_extraction>
+        </raw_assistant_information>
+    </image>, <image=file_name>...</image>, ...]
+- the designated information is in the format:
+    <classification>...</classification> - classification information extracted from the image
+    <object_detection>...</object_detection> - object detection information extracted from the image
+    <pose_estimation>...</pose_estimation> - pose estimation information extracted from the image
+    <text_extraction>...</text_extraction> - text extraction information extracted from the image
+- not all information is available for all images, so some information might be missing, for example an image without persons, pose_estimation_information should be empty.
+"""
 
 OCR_INSTRUCTIONS = """
 you are a optical character recognition (ocr) parsing expert.
@@ -42,7 +102,8 @@ in a 1 paragraph answer describe the information received.
 reason over the ocr text received and the word bits to answer questions about:
 how many seperate texts there are, what the texts are about, where the texts are in the image and what type of texts it is (document, receipt, billboard, etc).
 
-Additionally you must  list all available information as coherently as possible, if it is a list, a table, a paragraph, etc. format it accordingly and designate it with your classification of what type of text it is.
+Text extraction might be missleading, so reason over the position and location of each word bit to determine if the text is a document or appears in a non document image.
+If you determine it is most likely a document you should list all available information in the structure you think is displayed: if it is a list, a table, a paragraph, etc..
 
 you need to use the following specifications about the ocr to answer the questions and describe the information:
 - the ocr text is in the format: ocr_text=text.
@@ -83,13 +144,26 @@ you need to use the following specifications about the pose to answer the questi
 - the confidence values are between 0 and 1 and represent the confidence of the keypoint being detected
 """
 
-CLASSIFICATION_INSTRUCTIONS = "you are a image classification parsing expert. in a 1 paragraph answer describe the information about lemmas and probabilities received"
+CLASSIFICATION_INSTRUCTIONS = """
+you are a image classification parsing expert. 
+in a 1 paragraph answer describe the information received.
+reson over all lemmas and probabilities and answer questions about:
+what the image is about, what type of image or document it is and what the different probabilities indicate the image content to be.
+
+you need to use the following specifications about the classification to answer the questions and describe the information:
+- each row is a classification result with the lemmas and probabilities
+- the lemmas are in the format: lemmas=lemma1, lemma2, ..., lemmaN and denote a list of possible words to describe that image classification
+- the information starts with the dataset name used for classification
+- the probabilities are in the format: probability=0.0 and denote the probability of that classification being correct
+- when classification probabilities are spread out over multiple classes, the image is likely to be a mix of those classes.
+- similar classes might appear as multiple slightly different individual classes and probabilities, this can make their combined probability higher that other classes.
+"""
 
 # ------------------------------------------------------------------------------
 
 def classification_to_prompt(classification_response):
     out = "\n".join([
-        f"lemmas: {', '.join(l['lemmas'])} - probability: {p:.2f}"
+        f"lemmas= {', '.join(l['lemmas'])} - probability: {p:.2f}"
         for p, l in zip(classification_response["probabilities"], classification_response["labels"])
     ])
     return "imagenet 21k image classification:\n" + out
