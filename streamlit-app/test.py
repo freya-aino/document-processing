@@ -29,6 +29,28 @@ for url in urls:
             print("failed:  ", url, "\n", response.text)
     print("----------------------------------------------------------")
 
+
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_openai import ChatOpenAI
+import os
+
+with open("openai-api-key.txt", "r") as f:
+    api_key = f.read().strip()
+
+os.environ["OPENAI_API_KEY"] = api_key
+
+LLM = ChatOpenAI(
+    model="gpt-4o-mini",
+    temperature=0.1,
+    max_tokens=None,
+    timeout=None,
+    max_retries=2
+)
+
+print("chatgpt:", LLM.invoke(ChatPromptTemplate("ping")))
+print("----------------------------------------------------------")
+
+
 # # check gradio model
 
 # from gradio_client import Client, handle_file
