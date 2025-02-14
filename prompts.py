@@ -250,7 +250,14 @@ you need to use the following specifications about the classification to answer 
 - similar classes might appear as multiple slightly different individual classes and probabilities, this can make their combined probability higher that other classes.
 """
 
+
+
+
 # ------------------------------------------------------------------------------
+
+
+
+
 
 def classification_to_prompt(classification_response):
     out = "\n".join([
@@ -280,3 +287,150 @@ def ocr_to_prompt(ocr_response_text, ocr_response_data):
     out = "ocr_text:\n" + ocr_response_text["text"] + "\n"
     out += "ocr_word_bits:\n" + json.dumps(ocr_response_data["words"]) + "\n"
     return "optical_character_recognition (ocr):\n" + out
+
+def get_prompt_formatting(responses):
+    return {
+        "classification": classification_to_prompt(responses["classification"]) if responses["classification"] else None,
+        "object_detection": objects_to_prompt(responses["object_detection"]) if responses["object_detection"] else None,
+        "pose_estimation": pose_to_prompt(responses["pose_estimation"]) if responses["pose_estimation"] else None,
+        "text_extraction": ocr_to_prompt(responses["text_extraction"], responses["text_data_extraction"]) if responses["text_extraction"] and responses["text_data_extraction"] else None
+    }
+
+def gpt_extract_information(responses, message_column):
+    
+    classification_results = None
+    object_detection_results = None
+    pose_estimation_results = None
+    text_extraction_results = None
+    
+    chain = EXTRACTION_PROMPT | LLM
+    
+    formatted_prompts = get_prompt_formatting(responses)
+    
+    if formatted_prompts["classification"]:
+        try:
+            classification_results = chain.invoke({
+                "instructions": CLASSIFICATION_INSTRUCTIONS, 
+                "information": formatted_prompts["classification"]
+            }).content
+            message_column.success("LLM info for classification")
+        except Exception as e:
+            message_column.warning(f"Error: {e}")
+        
+    if formatted_prompts["object_detection"]:
+        try:
+            object_detection_results = chain.invoke({
+                "instructions": OBJECT_DETECTION_INSTRUCTIONS, 
+                "information": formatted_prompts["object_detection"]
+            }).content
+            message_column.success("LLM info for object detection")
+        except Exception as e:
+            message_column.warning(f"Error: {e}")
+        
+    if formatted_prompts["pose_estimation"]:
+        try:
+            pose_estimation_results = chain.invoke({
+                "instructions": POSE_INSTRUCTIONS, 
+                "information": formatted_prompts["pose_estimation"]
+            }).content
+            message_column.success("LLM info for pose estimation")
+        except Exception as e:
+            message_column.warning(f"Error: {e}")
+        
+    if formatted_prompts["text_extraction"]:
+        try:
+            text_extraction_results = chain.invoke({
+                "instructions": OCR_INSTRUCTIONS, 
+                "information": formatted_prompts["text_extraction"]
+            }).content
+            message_column.success("LLM info for text extraction")
+        except Exception as e:  
+            message_column.warning(f"Error: {e}")
+    
+    return {
+        "classification": classification_results,
+        "object_detection": object_detection_results,
+        "pose_estimation": pose_estimation_results,
+        "text_extraction": text_extraction_results
+    }
+
+def assistant_chat_api(user_input, extracted_information, gpt_extracted_information):
+    
+    information = ""
+    for file_name in gpt_extracted_information:
+        gpt_information = gpt_extracted_information[file_name]
+        ext_information = extracted_information[file_name]
+        
+        for k in gpt_information:
+            gpt_information[k] = gpt_information[k].replace("\"", "'") if gpt_information[k] else ""
+        
+        ext_information_prompts = get_prompt_formatting(ext_information)
+        
+        information += f"""
+            <image={file_name}>
+                <assistant_information>
+                    <classification>{gpt_information.get('classification', '')}</classification>
+                    <object_detection>{gpt_information.get('object_detection', '')}</object_detection>
+                    <pose_estimation>{gpt_information.get('pose_estimation', '')}</pose_estimation>
+                    <text_extraction>{gpt_information.get('text_extraction', '')}</text_extraction>
+                </assistant_information>
+                <raw_assistant_information>
+                    <classification>{ext_information_prompts.get('classification', '')}</classification>
+                    <object_detection>{ext_information_prompts.get('object_detection', '')}</object_detection>
+                    <pose_estimation>{ext_information_prompts.get('pose_estimation', '')}</pose_estimation>
+                    <text_extraction>{ext_information_prompts.get('text_extraction', '')}</text_extraction>
+                </raw_assistant_information>
+            </image>
+            """
+    
+    chain = CHAT_PROMPT | LLM_CHAT
+    
+    answer = chain.invoke({
+        "instructions": CHAT_INSTRUCTIONS,
+        "information": information,
+        "prompt": user_input
+    }).content
+    
+    return answer
+
+def image_generator_api(user_input, extracted_information, gpt_extracted_information, chat_history):
+    
+    information = ""
+    for file_name in gpt_extracted_information:
+        gpt_information = gpt_extracted_information[file_name]
+        ext_information = extracted_information[file_name]
+        
+        for k in gpt_information:
+            gpt_information[k] = gpt_information[k].replace("\"", "'") if gpt_information[k] else ""
+        
+        ext_information_prompts = get_prompt_formatting(ext_information)
+        
+        information += f"""
+            <image={file_name}>
+                <assistant_information>
+                    <classification>{gpt_information.get('classification', '')}</classification>
+                    <object_detection>{gpt_information.get('object_detection', '')}</object_detection>
+                    <pose_estimation>{gpt_information.get('pose_estimation', '')}</pose_estimation>
+                    <text_extraction>{gpt_information.get('text_extraction', '')}</text_extraction>
+                </assistant_information>
+                <raw_assistant_information>
+                    <classification>{ext_information_prompts.get('classification', '')}</classification>
+                    <object_detection>{ext_information_prompts.get('object_detection', '')}</object_detection>
+                    <pose_estimation>{ext_information_prompts.get('pose_estimation', '')}</pose_estimation>
+                    <text_extraction>{ext_information_prompts.get('text_extraction', '')}</text_extraction>
+                </raw_assistant_information>
+            </image>
+            """
+    
+    chat_history = "".join([f"<chat><role>{message['role']}</role><content>{message['content']}</content></chat>" for message in chat_history])
+    
+    chain = GENERATION_PROMPT | LLM_CHAT
+    
+    image_prompt = chain.invoke({
+        "instructions": IMAGE_GENERATION_INSTRUCTIONS,
+        "information": information,
+        "chat_history": chat_history,
+        "prompt": user_input
+    }).content
+    
+    return image_prompt
